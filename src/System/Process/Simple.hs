@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module System.Process.Simple
   ( sh
+  , sh'
   , parseCommand
   ) where
 
@@ -48,6 +49,14 @@ sh cmd args = do
   ret <- eIOExTxIO $ readProcessWithExitCode cmd (argParser args) ""
   err <- liftIO getLastError
   processResult ret err
+
+sh' :: String -> [Text] -> EitherT Text IO Text
+sh' cmd args = do
+  liftIO resetErrno
+  ret <- eIOExTxIO $ readProcessWithExitCode cmd (fmap T.unpack args) ""
+  err <- liftIO getLastError
+  processResult ret err
+
 
 processResult
   :: Monad m

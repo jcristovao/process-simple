@@ -1,5 +1,5 @@
 name:                process-simple
-version:             0.2.1.0
+version:             0.2.2.0
 synopsis:            Simple execution of shell commands with either result
 -- description:         
 homepage:            https://github.com/jcristovao/process-simple
