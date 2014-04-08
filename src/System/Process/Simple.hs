@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module System.Process.Simple
   ( sh
+  , parseCommand
   ) where
 
 import Prelude hiding (takeWhile)
@@ -62,37 +63,40 @@ processResult (exitCode,stdo,stde) err
 parseSh :: Text -> [Text]
 parseSh = L.filter (not . T.null) . T.split (\c -> c == '\n' || c == '\r')
 
-{-# ANN parseCommand'' ("HLint: ignore Use notElem"::String) #-}
--- ATTN: does not properly handle two consecutive spaces
-parseCommand'' :: Parser Text
-parseCommand'' = do
-  start <- takeWhile (\c -> c /= '\\' && c /= '"' && c /= ' ')
-  sepr  <- try (char '\\') <|> try (char '"') <|> try (char ' ') <|> return ' '
-  case sepr of
-
-    '\\' -> do
-              plusOne <- try (AT.take 1)
-              return $ start <> T.singleton sepr <> plusOne
-
-    '"'  -> do
-              inQuotes <- try parseTillEndOfQuotes
-              return $ start <> inQuotes
-              {-return $ start <> (T.singleton sepr) <> inQuotes-}
-
-    _   ->  if T.null start
-              then fail $ "Empty result:" ++ T.unpack start
-              else return start
-
-
-
 parseCommand' :: Parser [Text]
 parseCommand' = do
-  comms <- many (try parseCommand'')
+  comms <- many parseC'
   nonEmpty <$> if Prelude.null comms
     then fmap (: []) takeText
     else do
       lastc <- takeText
       return $ comms ++ [lastc]
+
+{-# ANN parseC' ("HLint: ignore Use notElem"::String) #-}
+parseC' :: Parser Text
+parseC' = do
+  start <- takeWhile ( `notElem` ['\\','"',' '])
+  nc    <- peekChar
+  case nc of
+    Just ' ' -> do
+      _   <- skipSpace
+      return start
+    Just '\\' -> do
+      plusTwo <- (AT.take 2) <|> (AT.take 1)
+      remain <- parseC'
+      return $ start <> plusTwo <> remain
+    Just '"' ->
+      if T.null start
+        then do
+          _ <- AT.take 1
+          inQuotes <- parseTillEndOfQuotes'
+          return $ start <> inQuotes
+
+        else do
+          plusOne <- AT.take 1
+          remain <- parseC'
+          return $ start <> plusOne <> remain
+    Nothing -> if T.null start then fail "No more text" else return start
 
 
 parseCommand :: Text -> [Text]
@@ -116,6 +120,26 @@ parseTillEndOfQuotes = do
       if nc == Just ' '
         then char ' ' >> return start
         else return start
+
+parseTillEndOfQuotes' :: Parser Text
+parseTillEndOfQuotes' = do
+  start <- takeWhile (\c -> c /= '\\' && c /= '"')
+  sepr  <- char '\\' <|> char '"'
+  case sepr of
+
+    '\\' -> do
+              plusOne <- AT.take 1
+              remain  <- parseTillEndOfQuotes'
+              return $ start <> T.singleton sepr <> plusOne <> remain
+
+    _   -> do
+      nc <- peekChar
+      if nc == Just ' '
+        then char ' ' >> return start
+        else do
+          remain <- parseTillEndOfQuotes'
+          return $ start <> T.singleton sepr <> remain
+
 
 ------------------------------------------------------------------------------
 -- Monoid operations ---------------------------------------------------------
