@@ -5,11 +5,17 @@ module System.Exit.Util
   , getLastError
   , decodeExitCode
   , analyseExitCode
+  , exitCodeToIOError
+  , evalExitError
+  , evalExitErrorNote
   ) where
 
 import System.Exit
 import Foreign.C.Error
+import System.IO
+import GHC.IO.Exception
 import Control.DeepSeq
+import Control.Exception
 
 instance NFData ExitCode
 
@@ -67,3 +73,51 @@ decodeExitCode (ExitFailure err)
   | err > 128  = RelayError $ "Fatal error signal " ++ show err
   | otherwise  = RelayError $ "Unspecified error " ++ show err
 
+-- | Construct an 'IOError' based on the given processs exitCode.
+-- The optional information can be used to improve the accuracy of
+-- error messages.
+--
+exitCodeToIOError
+  :: String -- ^ optional location where the error occurred
+  -> Maybe Handle -- ^ optional handle associated with the error
+  -> Maybe String -- ^ optional filename associated with the error
+  -> ExitCode     -- ^ returned exit code
+  -> Maybe IOError -- ^ Just IOError if exit code /= 0
+exitCodeToIOError loc maybeHdl maybeName exCode = case exCode of
+    ExitSuccess -> Nothing
+    (ExitFailure exitCode) -> Just $
+      IOError maybeHdl (fst errType) loc errStr Nothing maybeName
+        where
+          errStr = snd errType
+          errType
+              | exitCode == 64   = (InvalidArgument   , "command line usage error")
+              | exitCode == 65   = (InappropriateType , "data format error")
+              | exitCode == 66   = (PermissionDenied  , "cannot open input")
+              | exitCode == 67   = (InvalidArgument   , "addressee unknown")
+              | exitCode == 68   = (InvalidArgument   , "host name unknown")
+              | exitCode == 69   = (NoSuchThing       , "service unavailable")
+              | exitCode == 70   = (SystemError       , "internal software error")
+              | exitCode == 71   = (SystemError       , "system error")
+              | exitCode == 72   = (UnsatisfiedConstraints, "critical OS file missing")
+              | exitCode == 73   = (PermissionDenied  , "can't create (user) output file")
+              | exitCode == 74   = (PermissionDenied  , "input/output error")
+              | exitCode == 75   = (ResourceBusy      , "temporary fail, please retry")
+              | exitCode == 76   = (ProtocolError     , "remote error in protocol")
+              | exitCode == 77   = (PermissionDenied  , "permission denied")
+              | exitCode == 78   = (UserError         , "configuration error")
+              | exitCode == 2    = (UnsupportedOperation, "Misuse of shell builtins")
+              | exitCode == 126  = (IllegalOperation  , "Command found, but cannot execute")
+              | exitCode == 127  = (NoSuchThing       , "Command not found")
+              | exitCode == 128  = (InvalidArgument   , "Invalid argument to exit")
+              | exitCode >= 255  = (InvalidArgument   , "Exit status out of range" ++ show exitCode)
+              | exitCode >  128  = (SystemError       , "Fatal error signal " ++ show exitCode)
+              | otherwise        = (OtherError        , "Unknown error " ++  show exitCode)
+
+-- | Raise an IOException based on the exit code, or return () for ExitSuccess
+evalExitError :: ExitCode -> IO ()
+evalExitError = maybe (return ()) throwIO . exitCodeToIOError "" Nothing Nothing
+
+-- | Like evalExitError but with an additional information note
+evalExitErrorNote :: String -> ExitCode -> IO ()
+evalExitErrorNote note = maybe (return ()) throwIO
+                       . exitCodeToIOError note Nothing Nothing
