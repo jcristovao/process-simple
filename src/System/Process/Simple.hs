@@ -38,6 +38,8 @@ import qualified Data.IntMap as IM
 argParser :: Text -> [String]
 argParser = L.map T.unpack . nonEmpty . parseCommand . T.strip
 
+-- TODO: sh -> shT. Why not EitherT IOException IO Text
+--
 -- | Execute a command with the given argument list, and return the Output
 -- (@STDOUT@) as a Right value if everything was ok, or a Left value with either:
 -- * @STDERR@ output

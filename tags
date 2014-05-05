@@ -1,0 +1,27 @@
+<§>	src/System/Process/Simple.hs	189;"	v	file:
+ExitCodeError	src/System/Exit/Util.hs	28;"	t	file:
+NoError	src/System/Exit/Util.hs	29;"	d	file:
+RelayError	src/System/Exit/Util.hs	31;"	d	file:
+ThrowError	src/System/Exit/Util.hs	30;"	d	file:
+analyseExitCode	src/System/Exit/Util.hs	40;"	v
+argParser	src/System/Process/Simple.hs	39;"	v	file:
+decodeExitCode	src/System/Exit/Util.hs	48;"	v
+evalExitError	src/System/Exit/Util.hs	118;"	v
+evalExitErrorNote	src/System/Exit/Util.hs	122;"	v
+exitCodeToIOError	src/System/Exit/Util.hs	86;"	v
+fromMonoid	src/System/Process/Simple.hs	186;"	v	file:
+getLastError	src/System/Exit/Util.hs	24;"	v
+isEmpty	src/System/Process/Simple.hs	163;"	v	file:
+isNotEmpty	src/System/Process/Simple.hs	173;"	v	file:
+nonEmpty	src/System/Process/Simple.hs	158;"	v	file:
+notEmpty	src/System/Process/Simple.hs	168;"	v	file:
+parseC'	src/System/Process/Simple.hs	86;"	v	file:
+parseCommand	src/System/Process/Simple.hs	112;"	v
+parseCommand'	src/System/Process/Simple.hs	76;"	v	file:
+parseSh	src/System/Process/Simple.hs	73;"	v	file:
+parseTillEndOfQuotes	src/System/Process/Simple.hs	117;"	v	file:
+parseTillEndOfQuotes'	src/System/Process/Simple.hs	134;"	v	file:
+processResult	src/System/Process/Simple.hs	66;"	v	file:
+sh	src/System/Process/Simple.hs	47;"	v
+sh'	src/System/Process/Simple.hs	54;"	v
+§	src/System/Process/Simple.hs	195;"	v	file:
