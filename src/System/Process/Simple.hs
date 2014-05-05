@@ -1,63 +1,67 @@
 {-# LANGUAGE OverloadedStrings #-}
 module System.Process.Simple
-  ( sh
-  , sh'
+  ( shT
+  , shT'
+  , shell
   , parseCommand
   ) where
 
 import Prelude hiding (takeWhile)
-import System.Process hiding (env)
+import System.Process hiding (env,shell)
 import System.Exit
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.Class
 import Control.Monad.Trans.Either
-import Control.Monad.Trans.Reader
 import Control.Monad.IO.Class
+import Control.Exception
 
 import Data.Monoid
-{-import Data.Easy-}
-import Data.Char
 import Data.List as L hiding (takeWhile)
 import Data.Text (Text)
-{-import Data.Attoparsec-}
 import Data.Attoparsec.Text as AT
-{-import Data.Text.Util-}
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
+{-import qualified Data.Text.IO as T-}
 
 import Control.Exception.Enclosed.Either
 import System.Exit.Util
+import GHC.IO.Exception
 
-import Data.IORef
-import qualified Data.Map    as Map
-import qualified Data.IntMap as IM
 
 -- | Split a command into an argument list
 argParser :: Text -> [String]
 argParser = L.map T.unpack . nonEmpty . parseCommand . T.strip
 
--- TODO: sh -> shT. Why not EitherT IOException IO Text
---
 -- | Execute a command with the given argument list, and return the Output
 -- (@STDOUT@) as a Right value if everything was ok, or a Left value with either:
 -- * @STDERR@ output
 -- * A raised exception text
 -- * A non-zero return code associated failure
-sh :: String -> Text -> EitherT Text IO Text
-sh cmd args = do
+shT :: String -> Text -> EitherT Text IO Text
+shT cmd args = do
   liftIO resetErrno
   ret <- eIOExTxIO $ readProcessWithExitCode cmd (argParser args) ""
   err <- liftIO getLastError
   processResult ret err
 
-sh' :: String -> [Text] -> EitherT Text IO Text
-sh' cmd args = do
+shT' :: String -> [Text] -> EitherT Text IO Text
+shT' cmd args = do
   liftIO resetErrno
   ret <- eIOExTxIO $ readProcessWithExitCode cmd (fmap T.unpack args) ""
   err <- liftIO getLastError
   processResult ret err
+
+-- | Executed a shell command with the given argument list.
+-- If the exit code is non-zero or stderr is non null, it raises an IOException.
+shell :: Text -> [Text] -> IO Text
+shell cmd args = do
+  (ec,stdo,stde) <- readProcessWithExitCode (T.unpack cmd) (fmap T.unpack args) ""
+  evalExitError ec
+  unless (L.null stde)
+         (throwIO $ IOError Nothing OtherError "Standard error reported errors"
+                                               stde Nothing Nothing)
+  return . T.pack $ stdo
+
 
 
 processResult
@@ -70,9 +74,6 @@ processResult (exitCode,stdo,stde) err
                                 $ stde <§> analyseExitCode exitCode err
       | (not . L.null) stde     = left  . T.pack $ stde
       | otherwise               = right . T.pack $ stdo
-
-parseSh :: Text -> [Text]
-parseSh = L.filter (not . T.null) . T.split (\c -> c == '\n' || c == '\r')
 
 parseCommand' :: Parser [Text]
 parseCommand' = do
