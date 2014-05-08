@@ -71,7 +71,7 @@ processResult
   -> EitherT Text m Text
 processResult (exitCode,stdo,stde) err
       | exitCode /= ExitSuccess = left  . T.pack
-                                $ stde <§> analyseExitCode exitCode err
+                                $ stde <\> analyseExitCode exitCode err
       | (not . L.null) stde     = left  . T.pack $ stde
       | otherwise               = right . T.pack $ stdo
 
@@ -188,8 +188,8 @@ isNotEmpty = (/=) mempty
 fromMonoid :: (Eq a, Monoid a) => a -> a -> a
 fromMonoid def mon = if isEmpty mon then def else mon
 
-(<§>) :: (Monoid a, Eq a) => a -> a -> a
-(<§>) a b = if isEmpty a then b else a
+(<\>) :: (Monoid a, Eq a) => a -> a -> a
+(<\>) a b = if isEmpty a then b else a
 
 -- | Just like (@'$'@), but with higher precedence than (@'<>'@), but still lower
 -- than (@'.'@). Similar to "Diagrams.Util" @'#'@, but without flipped arguments.
