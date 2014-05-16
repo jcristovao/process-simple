@@ -58,11 +58,15 @@ shell cmd args = do
   (ec,stdo,stde) <- readProcessWithExitCode (T.unpack cmd) (fmap T.unpack args) ""
   evalExitError ec
   unless (L.null stde)
-         (throwIO $ IOError Nothing OtherError "Standard error reported errors"
-                                               stde Nothing Nothing)
+         (throwIO $ IOError Nothing OtherError "stderr reported"
+                                               (dropLastNL stde)
+                                               Nothing
+                                               Nothing)
   return . T.pack $ stdo
 
-
+dropLastNL :: String -> String
+dropLastNL [] = []
+dropLastNL s = init s ++ (if last s == '\n' then [] else [last s])
 
 processResult
   :: Monad m
